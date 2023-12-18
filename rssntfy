@@ -73,7 +73,7 @@ log() (
 # Function: output error data to stderr
 # Arguments: message
 err() (
-  printf '[%s] ERROR: %s\n' "$(date +'%Y-%m-%dT%H:%M:%S%z')" "$*" >&2
+  printf '[%s]: ERROR %s\n' "$(date +'%Y-%m-%dT%H:%M:%S%z')" "$*" >&2
 )
 
 # Function: defer the removal of temp files for trap exit
@@ -116,7 +116,7 @@ hash_sum() (
   fi
   a=${h%\ *}
   b=${h#*\ }
-  printf %s\\n $((a + b))
+  printf %d\\n $((a + b))
 )
 
 # Function: make a curl request and return a file
@@ -250,7 +250,7 @@ main() {
     hash_file="$Working_Dir/$hn"
     if [ -r "$hash_file" ]; then
       if [ "$hc" -eq "$(cat "$hash_file")" ]; then
-        log "'$feedName' is at latest version. Skipping"
+        log "'$feedName' is at latest version. Skipping."
         continue
       fi
     fi
