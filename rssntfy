@@ -110,12 +110,13 @@ hash_sum() (
     return 1
   fi
 
-  tmp="$(mktemp)" || return 1
-  defer "$tmp"
-  printf '%s' "$*" > "$tmp" || return 1
-  # shellcheck disable=SC2046
-  set -- $(cksum "$tmp")
-  printf %d\\n "$1"
+  if ! h="$(printf '%s' "$*" | cksum 2>&1)"; then
+    printf %s\\n "$h"
+    return 1
+  fi
+  a=${h%\ *}
+  b=${h#*\ }
+  printf %s\\n $((a + b))
 )
 
 # Function: make a curl request and return a file
