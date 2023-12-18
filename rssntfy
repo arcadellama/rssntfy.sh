@@ -45,7 +45,7 @@ usage() (
   cat << EOF
   $Prgnam -- $Version
 
-  Usage: [-vq] [-s] <ntfy.sh server> [-d] <working dir> <rss_feed>
+  Usage: [-vq] [-s] <ntfy.sh server> [-d] <working dir> url://rss.feed.xml
 
   Arguments:
   -v        Verbose logging
