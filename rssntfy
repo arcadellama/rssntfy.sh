@@ -336,7 +336,7 @@ main() {
       continue
     fi
 
-    log "$r"
+    log "Response from $Ntfy_Server: $r"
 
     out "Notification sent to: $Ntfy_Server/$ntfy_shortname"
 
