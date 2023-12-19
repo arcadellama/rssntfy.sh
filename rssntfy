@@ -136,7 +136,7 @@ http__curl() (
     return 1
   fi
 
-  if ! ret=$("$(command -v curl)" -sS \
+  if ! ret=$("$(command -v curl)" -sSL \
     -o "$response" \
     -w '%{http_code}' \
     "$@" 2>&1); then
