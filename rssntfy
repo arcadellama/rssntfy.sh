@@ -201,6 +201,13 @@ validate_xml() (
   return 1
 )
 
+is_atom_feed() (
+  case "$1" in
+    *\<entry\>*) return 0 ;;
+              *) return 1 ;;
+  esac
+)
+
 main() {
   retval=0
   # Get opts
@@ -239,28 +246,9 @@ main() {
     fi
 
     log "Parsing xml for $feed"
-
-    # Parse RSS feed
     feedName="" itemName="" itemLink=""
-    # Channel title
-    # Strip everything after first item tag
-    xml="${xml%%\<\/item\>*}"
-    t="${xml%%\<\/title\>*}"
-    feedName="${t#*\<title\>}"
-
-    # First item title
-    # Strip everything before first item tag
-    xml="${xml##*\<item\>}"
-    i="${xml%%\<\/title\>*}"
-    itemName="${i#*\<title\>}"
-
-    # First item link
-    l="${xml%%\<\/link\>*}"
-    itemLink="${l#*\<link\>}"
-
-    # Check if it worked, if not, try an Atom spec
-    if [ -z "$feedName" ] || [ -z "$itemName" ] || [ -z "$itemLink" ]; then
-      feedName="" itemName="" itemLink=""
+    if is_atom_feed "$xml"; then
+      log "I think $feed is an atom+xml feed"
       # Channel title
       # Strip everything after first entry tag
       xml="${xml%%\<\/entry\>*}"
@@ -275,9 +263,31 @@ main() {
 
       # First item link
       l="${xml%%\<\/link\>*}"
+      l="${l#*\<link\>}"
+      l="${l#*href=\"}"
+      itemLink="${l%%\"*}"
+    else
+      log "I think $feed is an rss+xml feed"
+      # Parse RSS feed
+      feedName="" itemName="" itemLink=""
+      # Channel title
+      # Strip everything after first item tag
+      xml="${xml%%\<\/item\>*}"
+      t="${xml%%\<\/title\>*}"
+      feedName="${t#*\<title\>}"
+
+      # First item title
+      # Strip everything before first item tag
+      xml="${xml##*\<item\>}"
+      i="${xml%%\<\/title\>*}"
+      itemName="${i#*\<title\>}"
+
+      # First item link
+      l="${xml%%\<\/link\>*}"
       itemLink="${l#*\<link\>}"
     fi
-    
+
+    # Check if it worked
     if [ -z "$feedName" ] || [ -z "$itemName" ] || [ -z "$itemLink" ]; then
       err "Unable to parse RSS XML: $feed"
       retval=$((retval + 1))
