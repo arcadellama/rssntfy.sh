@@ -172,7 +172,7 @@ validate_xml() (
       ;;
   esac
 
-  # Strip everything after head
+  # Find xml href in HTML page
   r="${r%%\<\/head\>*}"
   while read -r line; do
     case "$line" in
@@ -183,6 +183,7 @@ validate_xml() (
           printf %s\\n "$xml"
           return
         fi
+        ;;
     esac
   done << EOF
 $(printf %s\\n "$r")
@@ -322,8 +323,6 @@ main() {
       err "Unable to shorten $Ntfy_Name for ntfy.sh; skipping"
       return $((retval + 1))
     fi
-
-    exit
 
     log "Sending notification to $Ntfy_Server/$ntfy_shortname"
     if ! r="$(http__curl \
