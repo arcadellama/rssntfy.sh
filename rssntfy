@@ -94,6 +94,8 @@ clean_up() {
   done
 }
 
+# Function: remove spaces from a string
+# Argument: string
 del_space() (
   # shellcheck disable=SC2086
   set -- $1
