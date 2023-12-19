@@ -36,6 +36,7 @@ Prgnam="$(basename "$0")"
 Version=0.0.1
 Verbose=0
 Ntfy_Server="${Ntfy_Server:=https://ntfy.sh}"
+Ntfy_Name=""
 Working_Dir="${Working_Dir:=$HOME/.local/var/$Prgnam}"
 Defer_Files=""
 
@@ -45,12 +46,13 @@ usage() (
   cat << EOF
   $Prgnam -- $Version
 
-  Usage: [-vq] [-s] <ntfy.sh server> [-d] <working dir> url://rss.feed.xml
+  Usage: [-v] [-s] [-n] [-d] url://rss.feed.xml
 
   Arguments:
   -v        Verbose logging
-  -d        Working directory. (Default: \$HOME/.local/var/$Prgnam)
-  -s        Ntfy.sh server (Default: https://ntfy.sh)
+  -n        Namespace for ntfy.sh 
+  -d        Working directory (Default: \$HOME/.local/var/$Prgnam)
+  -s        ntfy.sh server url (Default: https://ntfy.sh)
 
 EOF
 exit "${1:-0}"
@@ -116,7 +118,8 @@ hash_sum() (
   fi
   a=${h%\ *}
   b=${h#*\ }
-  printf %d\\n $((a + b))
+
+  printf %d\\n $((a + b)) 2>&1
 )
 
 # Function: make a curl request and return a file
@@ -155,10 +158,11 @@ trap clean_up EXIT
 main() {
   retval=0
   # Get opts
-  while getopts 'vd:s:' opts; do
+  while getopts 'vd:n:s:' opts; do
     case "$opts" in
       v) Verbose=$((Verbose + 1)) ;;
       d) Working_Dir="$OPTARG" ;;
+      n) Ntfy_Name="$OPTARG" ;;
       s) Ntfy_Server="$OPTARG" ;;
       *) usage 1 ;;
     esac
@@ -229,27 +233,35 @@ main() {
       continue
     fi
 
+    Ntfy_Name="${Ntfy_Name:-"$feedName"}"
+
+    log "ntfy namespace: $Ntfy_Name"
     log "Name: $feedName"
     log "Title: $itemName"
     log "Link: $itemLink"
 
-    # Hashed Name
-    if ! hn="$(hash_sum "$feedName")"; then
-      err "$hn"
-      retval=$((retval + 1))
-      continue
+
+    # Hashed Ntfy_Name
+    if ! h_name="$(hash_sum "$Ntfy_Name")"; then
+      err "$h_name"
+      return $((retval + 1))
+    fi
+    
+    # Hashed Title
+    if ! h_feed="$(hash_sum "$feedName")"; then
+      err "$h_feed"
+      return $((retval + 1))
     fi
 
     # Hashed Content
-    if ! hc="$(hash_sum "$feedName" "$itemName" "$itemLink")"; then
-      err "$hc"
-      retval=$((retval + 1))
-      continue
+    if ! h_content="$(hash_sum "$feedName" "$itemName" "$itemLink")"; then
+      err "$h_content"
+      return $((retval + 1))
     fi
 
-    hash_file="$Working_Dir/$hn"
+    hash_file="$Working_Dir/$h_name/$h_feed"
     if [ -r "$hash_file" ]; then
-      if [ "$hc" -eq "$(cat "$hash_file")" ]; then
+      if [ "$h_content" -eq "$(cat "$hash_file")" ]; then
         log "'$feedName' is at latest version. Skipping."
         continue
       fi
@@ -257,20 +269,19 @@ main() {
 
     log "'$feedName' has been updated"
 
-    if ! mkdir -p "$Working_Dir"; then
-      err "FATAL Unable to access $Working_Dir"
-      exit $((retval + 1))
+    if ! mkdir -p "$(dirname "$hash_file")"; then
+      err "FATAL Unable to access $hash_file"
+      return $((retval + 1))
     fi
 
-    if ! printf %s\\n "$hc" > "$hash_file"; then
+    if ! printf %s\\n "$h_content" > "$hash_file"; then
       err "FATAL Unable to write to $hash_file"
-      exit $((retval + 1))
+      return $((retval + 1))
     fi
 
-    if ! ntfy_shortname="$(del_space "$feedName")"; then
-      err "Unable to shorten $feedName for ntfy.sh; skipping"
-      retval=$((retval + 1))
-      continue
+    if ! ntfy_shortname="$(del_space "$Ntfy_Name")"; then
+      err "Unable to shorten $Ntfy_Name for ntfy.sh; skipping"
+      return $((retval + 1))
     fi
 
     log "Sending notification to $Ntfy_Server/$ntfy_shortname"
