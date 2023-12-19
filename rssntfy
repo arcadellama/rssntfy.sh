@@ -158,19 +158,38 @@ http__curl() (
 
 # Function: validate if xml+rss or html; attempts to return xml feed
 # Arguments: URL
-validate_xml() {
+validate_xml() (
   if ! r="$(http__curl "$1")"; then
     printf %s\\n "$r"
     return 1
   fi
 
+  # Check if xml feed
   case "$r" in
     \<\?xml\ version=*)
       printf %s\\n "$1"
       return
       ;;
   esac
-}
+
+  # Strip everything after head
+  r="${r%%\<\/head\>*}"
+  while read -r line; do
+    case "$line" in
+      *\<link\ rel=\"alternate\"\ type=\"application/rss+xml*)
+        xml="${line##*href=\"}"
+        xml="${xml%%\"*}"
+        if xml="$(validate_xml "$xml")"; then
+          printf %s\\n "$xml"
+          return
+        fi
+    esac
+  done << EOF
+$(printf %s\\n "$r")
+EOF
+  printf %s\\n "$1"
+  return 1
+)
 
 main() {
   retval=0
@@ -192,7 +211,15 @@ main() {
 
   # shellcheck disable=2068
   for feed in $@; do
+
+    log "Validating $feed..."
+    if ! feed="$(validate_xml "$feed")"; then
+      err "Unable to validate $feed xml"
+      retval $((retval + 1))
+      continue
+    fi
     
+    log "Attempting to get xml feed from $feed..."
     # curl the feed
     if ! xml="$(http__curl "$feed")"; then
       err "$xml"
@@ -230,7 +257,7 @@ main() {
       feedName="${t#*\<title\>}"
 
       # First item title
-      # Strip everything before first item tag
+      # Strip everything before first entry tag
       xml="${xml##*\<entry\>}"
       i="${xml%%\<\/title\>*}"
       itemName="${i#*\<title\>}"
@@ -246,7 +273,7 @@ main() {
       continue
     fi
 
-    Ntfy_Name="${Ntfy_Name:-"$feedName"}"
+    Ntfy_Name="${Ntfy_Name:-"$(del_space "$feedName")"}"
 
     log "ntfy namespace: $Ntfy_Name"
     log "Name: $feedName"
@@ -295,6 +322,8 @@ main() {
       err "Unable to shorten $Ntfy_Name for ntfy.sh; skipping"
       return $((retval + 1))
     fi
+
+    exit
 
     log "Sending notification to $Ntfy_Server/$ntfy_shortname"
     if ! r="$(http__curl \
