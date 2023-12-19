@@ -34,25 +34,36 @@ LC_ALL=C
 
 Prgnam="$(basename "$0")"
 Version=0.0.1
-Verbose=0
 Ntfy_Server="${Ntfy_Server:=https://ntfy.sh}"
 Ntfy_Name=""
 Working_Dir="${Working_Dir:=$HOME/.local/var/$Prgnam}"
 Defer_Files=""
 
+Verbose=0
+Test_Mode=0
 # Function: Output usage
 # Arguments: exit status
 usage() (
   cat << EOF
   $Prgnam -- $Version
 
-  Usage: [-v] [-s] [-n] [-d] url://rss.feed.xml
+  Usage: [-tv] [OPTIONS] url://rss.feed.xml
 
   Arguments:
+  -t        Testing mode (do not send to ntfy)
   -v        Verbose logging
-  -n        Namespace for ntfy.sh (Optional)
+
+  Options:
   -d        Working directory (Default: \$HOME/.local/var/$Prgnam)
+  -n        Namespace for ntfy.sh (Optional)
   -s        ntfy.sh server url (Default: https://ntfy.sh)
+
+  Example:
+  To monitor 3 RSS feeds under one ntfy.sh namespace (e.g., RssNewsTechTag),
+  set the following as as a cron job:
+
+  $Prgnam -n RssNewsTechTag https://news.ycombinator.com/rss https://feeds.arstechnica.com/arstechnica/index https://www.theverge.com/rss/index.xml
+  
 
 EOF
 exit "${1:-0}"
@@ -109,19 +120,20 @@ del_space() (
 # Function: output the checksum of a string
 # Arguments: string
 hash_sum() (
+  hash=""
   if ! command -v cksum >/dev/null 2>&1; then
     printf "cksum not found in path\n"
     return 1
   fi
 
-  if ! h="$(printf '%s' "$*" | cksum 2>&1)"; then
-    printf %s\\n "$h"
+  if ! hash="$(printf '%s' "$*" | cksum 2>&1)"; then
+    printf %s\\n "$hash"
     return 1
   fi
-  a=${h%\ *}
-  b=${h#*\ }
+  a=${hash%\ *}
+  b=${hash#*\ }
   hash=$((a + b))
-  hash=$((+ (hash << 6) + (hash << 16) - hash))
+  hash=$((hash + (hash << 6) + (hash << 16) - hash))
 
   printf %d\\n $hash 2>&1
 )
@@ -197,8 +209,9 @@ EOF
 main() {
   retval=0
   # Get opts
-  while getopts 'vd:n:s:' opts; do
+  while getopts 'vtd:n:s:' opts; do
     case "$opts" in
+      t) Test_Mode=1 ;;
       v) Verbose=$((Verbose + 1)) ;;
       d) Working_Dir="$OPTARG" ;;
       n) Ntfy_Name="$OPTARG" ;;
@@ -321,9 +334,16 @@ main() {
       return $((retval + 1))
     fi
 
+    log "$h_content saved to $hash_file"
+
     if ! ntfy_shortname="$(del_space "$Ntfy_Name")"; then
       err "Unable to shorten $Ntfy_Name for ntfy.sh; skipping"
       return $((retval + 1))
+    fi
+
+    if [ "$Test_Mode" -ne 0 ]; then
+      log "Test mode, not sending to ntfy."
+      return
     fi
 
     log "Sending notification to $Ntfy_Server/$ntfy_shortname"
