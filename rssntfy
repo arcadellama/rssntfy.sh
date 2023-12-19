@@ -187,14 +187,25 @@ validate_xml() (
 
   # Find xml href in HTML page
   r="${r%%\<\/head\>*}"
-  xml="${r#*\<link\ rel=\"alternate\"\ type=\"application/rss+xml\"*href=\"}"
-  xml="${xml%%\"*}"
+
+  rss="${r#*application/rss+xml\"*href=\"}"
+  rss="${rss%%\"*}"
+  
+  atom="${r#*application/atom+xml\"*href=\"}"
+  atom="${atom%%\"*}"
+
   # check if a full link
-  case "$xml" in /*) xml="${1}$xml" ;; esac
-  if xml="$(validate_xml "$xml")"; then
-    printf %s\\n "$xml"
+  case "$rss" in /*) xml="${1}$rss" ;; esac
+  case "$atom" in /*) atom="${1}$atom" ;; esac
+
+  if rss="$(validate_xml "$rss")"; then
+    printf %s\\n "$rss"
+    return
+  elif atom="$(validate_xml "$atom")"; then
+    printf %s\\n "$atom"
     return
   fi
+  
   # Not validated, sending back original with error
   printf %s\\n "$1"
   return 1
