@@ -156,7 +156,22 @@ http__curl() (
   return $retval
 )
 
-trap clean_up EXIT
+# Function: validate if xml+rss or html; attempts to return xml feed
+# Arguments: URL
+validate_xml() {
+  if ! r="$(http__curl "$1")"; then
+    printf %s\\n "$r"
+    return 1
+  fi
+
+  case "$r" in
+    \<\?xml\ version=*)
+      printf %s\\n "$1"
+      return
+      ;;
+  esac
+}
+
 main() {
   retval=0
   # Get opts
@@ -238,8 +253,6 @@ main() {
     log "Title: $itemName"
     log "Link: $itemLink"
 
-    exit
-
     # Hashed Ntfy_Name
     if ! h_name="$(hash_sum "$Ntfy_Name")"; then
       err "$h_name"
@@ -303,4 +316,5 @@ main() {
   return "$retval"
 } 
 
+trap clean_up EXIT
 main "$@"
