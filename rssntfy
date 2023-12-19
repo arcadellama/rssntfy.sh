@@ -50,7 +50,7 @@ usage() (
 
   Arguments:
   -v        Verbose logging
-  -n        Namespace for ntfy.sh 
+  -n        Namespace for ntfy.sh (Optional)
   -d        Working directory (Default: \$HOME/.local/var/$Prgnam)
   -s        ntfy.sh server url (Default: https://ntfy.sh)
 
@@ -142,17 +142,17 @@ http__curl() (
     -o "$response" \
     -w '%{http_code}' \
     "$@" 2>&1); then
-      rm -rf "$response"
-      response="$ret"
+      printf %s\\n "$ret" > "$response"
       retval=1
   fi
 
   if [ $retval -eq 0 ] && [ "$ret" -ge 400 ]; then
     printf 'HTTP Error Code: %s\n' "$ret"
-    return 1
+    retval=1
   fi
 
-  printf %s\\n "$response"
+  cat "$response"
+  rm -rf "$response"
   return $retval
 )
 
@@ -177,58 +177,54 @@ main() {
 
   # shellcheck disable=2068
   for feed in $@; do
-    if ! r="$(http__curl "$feed")"; then
-      err "$r"
+    
+    # curl the feed
+    if ! xml="$(http__curl "$feed")"; then
+      err "$xml"
       retval=$((retval + 1))
       continue
     fi
-    defer "$r"
 
     log "Parsing xml for $feed"
 
-    feedName=""
-    itemName=""
-    itemLink=""
-    item=0
-    while read -r line; do
-      # Get feed name (first title)
-      if [ -z "$feedName" ]; then
-        case "$line" in
-          *\<title\>*)
-            t="${line#*\<title\>}"
-            feedName="${t%\<\/title\>*}"
-            continue
-            ;;
-        esac
-      fi
+    # Parse RSS feed
+    feedName="" itemName="" itemLink=""
+    # Channel title
+    # Strip everything after first item tag
+    xml="${xml%%\<\/item\>*}"
+    t="${xml%%\<\/title\>*}"
+    feedName="${t#*\<title\>}"
 
-      if [ "$item" -ne 1 ]; then
-        case "$line" in
-          *\<item\>*)
-            item=1
-            continue
-            ;;
-        esac
-      fi
+    # First item title
+    # Strip everything before first item tag
+    xml="${xml##*\<item\>}"
+    i="${xml%%\<\/title\>*}"
+    itemName="${i#*\<title\>}"
 
-      if [ "$item" -eq 1 ]; then
-        case "$line" in
-          *\<title\>*)
-            t="${line#*\<title\>}"
-            itemName="${t%\<\/title\>*}"
-            continue
-            ;;
-          *\<link\>*)
-            t="${line#*\<link\>}"
-            itemLink="${t%\<\/link\>*}"
-            continue
-            ;;
-          *\</item\>*) break ;;
-          *) continue ;;
-        esac
-      fi
-    done < "$r"
+    # First item link
+    l="${xml%%\<\/link\>*}"
+    itemLink="${l#*\<link\>}"
 
+    # Check if it worked, if not, try an Atom spec
+    if [ -z "$feedName" ] || [ -z "$itemName" ] || [ -z "$itemLink" ]; then
+      feedName="" itemName="" itemLink=""
+      # Channel title
+      # Strip everything after first entry tag
+      xml="${xml%%\<\/entry\>*}"
+      t="${xml%%\<\/title\>*}"
+      feedName="${t#*\<title\>}"
+
+      # First item title
+      # Strip everything before first item tag
+      xml="${xml##*\<entry\>}"
+      i="${xml%%\<\/title\>*}"
+      itemName="${i#*\<title\>}"
+
+      # First item link
+      l="${xml%%\<\/link\>*}"
+      itemLink="${l#*\<link\>}"
+    fi
+    
     if [ -z "$feedName" ] || [ -z "$itemName" ] || [ -z "$itemLink" ]; then
       err "Unable to parse RSS XML: $feed"
       retval=$((retval + 1))
@@ -242,6 +238,7 @@ main() {
     log "Title: $itemName"
     log "Link: $itemLink"
 
+    exit
 
     # Hashed Ntfy_Name
     if ! h_name="$(hash_sum "$Ntfy_Name")"; then
@@ -297,7 +294,8 @@ main() {
       retval=$((retval + 1))
       continue
     fi
-    defer "$r"
+
+    log "$r"
 
     out "Notification sent to: $Ntfy_Server/$ntfy_shortname"
 
