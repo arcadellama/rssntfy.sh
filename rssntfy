@@ -345,6 +345,45 @@ main() {
       return $((retval + 1))
     fi
 
+    # Check if this message is in ntfy cache
+    if ! j="$(http__curl \
+              "$Ntfy_Server/$ntfy_shortname/json?poll=1")"; then
+      err "$j"
+      retval=$((retval + 1))
+      continue
+    fi
+
+    in_cache=0
+    # Parse the ntfy json
+    while read -r json; do
+      cache_title="${json#*\"title\"\:\"}"
+      cache_title="${cache_title%%\",*}"
+
+      cache_msg="${json#*\"message\"\:\"}"
+      cache_msg="${cache_msg%%\",*}"
+
+      cache_url="${json#*\"url\"\:\"}"
+      cache_url="${cache_url%%\"*}"
+
+      if ! h_cache="$(hash_sum "$cache_title" "$cache_msg" "$cache_url")"; then
+        err "$h_cache"
+        return $((retval + 1))
+      fi
+
+      if [ "$h_cache" -eq "$(cat "$hash_file")" ]; then
+        in_cache=1
+        continue
+      fi
+
+      done << EOF
+      $(printf %s\\n "$j")
+EOF
+
+    if [ "$in_cache" -eq 1 ]; then
+      log "$feedName is already in the ntfy cache. Skipping."
+      continue
+    fi
+
     if [ "$Test_Mode" -ne 0 ]; then
       log "Test mode, not sending to ntfy."
       return
