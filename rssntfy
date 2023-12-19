@@ -120,8 +120,10 @@ hash_sum() (
   fi
   a=${h%\ *}
   b=${h#*\ }
+  hash=$((a + b))
+  hash=$((+ (hash << 6) + (hash << 16) - hash))
 
-  printf %d\\n $((a + b)) 2>&1
+  printf %d\\n $hash 2>&1
 )
 
 # Function: make a curl request and return a file
@@ -216,7 +218,7 @@ main() {
     log "Validating $feed..."
     if ! feed="$(validate_xml "$feed")"; then
       err "Unable to validate $feed xml"
-      retval $((retval + 1))
+      retval=$((retval + 1))
       continue
     fi
     
