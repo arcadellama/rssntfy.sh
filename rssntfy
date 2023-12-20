@@ -287,7 +287,6 @@ validate_xml() (
     return
   fi
   
-  # Not validated, sending back original with error
   err "Unable to validate $xml as an xml file"
   printf %s\\n "$1"
   return 1
