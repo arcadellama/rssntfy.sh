@@ -74,12 +74,6 @@ is_int() {
   printf %d "$1" >/dev/null 2>&1
 }
 
-# Function: output strings to stdout
-# Argument: string
-out() {
-  printf %s\\n "$*"
-}
-
 # Function: output log data to stderr
 # Arguments: message
 log() (
@@ -99,22 +93,6 @@ log() (
 err() (
   printf '[%s]: ERROR %s\n' "$(date +'%Y-%m-%dT%H:%M:%S%z')" "$*" >&2
 )
-
-# Function: defer the removal of temp files for trap exit
-# Argument: files to remove
-defer() {
-  # shellcheck disable=SC2068
-  for file in $@; do
-    Defer_Files="$(printf '%s\n' "$file" "$Defer_Files")"
-  done
-}
-
-# Function: remove files at exit
-clean_up() {
-  for file in $Defer_Files; do
-    rm -rf "$file"
-  done
-}
 
 # Function: remove spaces from a string
 # Argument: string
@@ -251,6 +229,12 @@ main() {
   done
   shift "$((OPTIND - 1))"
 
+  log 3 "Test_Mode --> $Test_Mode"
+  log 3 "Verbose --> $Verbose"
+  log 3 "Working_Dir --> $Working_Dir"
+  log 3 "Ntfy_Name --> $Ntfy_Name"
+  log 3 "Ntfy_Server --> $Ntfy_Server"
+
   if [ -z "${1:-}" ]; then
     err "No arguments passed."
     usage 1
@@ -260,6 +244,7 @@ main() {
   for feed in $@; do
 
     log 3 "feed is: $feed"
+    log 3 "validating $feed"
     if ! feed="$(validate_xml "$feed")"; then
       err "Unable to validate $feed xml"
       retval=$((retval + 1))
@@ -390,18 +375,20 @@ main() {
     fi
 
     log 2 "Parsing ntfy json"
-    log 3 "$j"
     in_cache=0
     # Parse the ntfy json
     while read -r json; do
       cache_title="${json#*\"title\"\:\"}"
       cache_title="${cache_title%%\",*}"
+      log 3 "cache_title --> $cache_title"
 
       cache_msg="${json#*\"message\"\:\"}"
       cache_msg="${cache_msg%%\",*}"
+      log 3 "cache_msg --> $cache_msg"
 
       cache_url="${json#*\"url\"\:\"}"
       cache_url="${cache_url%%\"*}"
+      log 3 "cache_url --> $cache_url"
 
       if ! h_cache="$(hash_sum "$cache_title" "$cache_msg" "$cache_url")"; then
         err "Unable to hash $cache_title, $cache_msg, $cache_url"
@@ -425,7 +412,8 @@ EOF
 
     if [ "$Test_Mode" -ne 0 ]; then
       log 0 "Test Mode: $feedName is updated, but not sending to ntfy."
-      return
+      log 3 "retval --> $retval"
+      return "$retval"
     fi
 
     log 1 "Sending notification to $Ntfy_Server/$ntfy_shortname"
