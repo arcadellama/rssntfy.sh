@@ -68,6 +68,12 @@ EOF
 exit "${1:-0}"
 )
 
+# Function: check if string is an integer
+# Argument: string
+is_int() {
+  printf %d "$1" >/dev/null 2>&1
+}
+
 # Function: output strings to stdout
 # Argument: string
 out() {
@@ -77,7 +83,13 @@ out() {
 # Function: output log data to stderr
 # Arguments: message
 log() (
-  if [ "$Verbose" -gt 0 ]; then
+  priority=1
+  if is_int "$1"; then
+    priority="$1"
+    shift
+  fi
+
+  if [ "$Verbose" -ge "$priority" ]; then
     printf '[%s]: %s\n' "$(date +'%Y-%m-%dT%H:%M:%S%z')" "$*" >&2
   fi
 )
@@ -243,25 +255,25 @@ main() {
   # shellcheck disable=2068
   for feed in $@; do
 
-    log "Validating $feed..."
     if ! feed="$(validate_xml "$feed")"; then
       err "Unable to validate $feed xml"
       retval=$((retval + 1))
       continue
     fi
-    
-    log "Attempting to get xml feed from $feed..."
+
+    log 2 "Downloading $feed"
     # curl the feed
     if ! xml="$(http__curl "$feed")"; then
+      err "Unable to download $feed"
       err "$xml"
       retval=$((retval + 1))
       continue
     fi
 
-    log "Parsing xml for $feed"
+    log 2 "Parsing xml for $feed"
     feedName="" itemName="" itemLink=""
     if is_atom_feed "$xml"; then
-      log "I think $feed is an atom+xml feed"
+      log 2 "I think $feed is an atom+xml feed"
       # Channel title
       # Strip everything after first entry tag
       xml="${xml%%\<\/entry\>*}"
@@ -280,7 +292,7 @@ main() {
       l="${l#*href=\"}"
       itemLink="${l%%\"*}"
     else
-      log "I think $feed is an rss+xml feed"
+      log 2 "I think $feed is an rss+xml feed"
       # Parse RSS feed
       feedName="" itemName="" itemLink=""
       # Channel title
@@ -309,10 +321,10 @@ main() {
 
     Ntfy_Name="${Ntfy_Name:-"$(del_space "$feedName")"}"
 
-    log "ntfy namespace: $Ntfy_Name"
-    log "Name: $feedName"
-    log "Title: $itemName"
-    log "Link: $itemLink"
+    log 1 "ntfy namespace: $Ntfy_Name"
+    log 1 "Name: $feedName"
+    log 1 "Title: $itemName"
+    log 1 "Link: $itemLink"
 
     # Hashed Ntfy_Name
     if ! h_name="$(hash_sum "$Ntfy_Name")"; then
@@ -328,6 +340,7 @@ main() {
 
     # Hashed Content
     if ! h_content="$(hash_sum "$feedName" "$itemName" "$itemLink")"; then
+      err "Unable to hash content: $feedName, $itemName, $itemLink"
       err "$h_content"
       return $((retval + 1))
     fi
@@ -340,7 +353,7 @@ main() {
       fi
     fi
 
-    log "'$feedName' has been updated"
+    log 1 "'$feedName' has been updated"
 
     if ! mkdir -p "$(dirname "$hash_file")"; then
       err "FATAL Unable to access $hash_file"
