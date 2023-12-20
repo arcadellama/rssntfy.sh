@@ -36,7 +36,6 @@ Version=0.0.1
 Ntfy_Server="${Ntfy_Server:=https://ntfy.sh}"
 Ntfy_Name=""
 Working_Dir="${Working_Dir:=$HOME/.local/var/$Prgnam}"
-Defer_Files=""
 
 Verbose=0
 Test_Mode=0
