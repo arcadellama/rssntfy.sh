@@ -204,7 +204,9 @@ validate_xml() (
     *rss+xml*)
       rss="${r#*application/rss+xml\"*href=\"}"
       rss="${rss%%\"*}"
-      case "$rss" in /*) xml="${1}$rss" ;; esac
+      log 3 "validate_xml:: rss --> $rss"
+      case "$rss" in /*) rss="${1}$rss" ;; esac
+      log 3 "corrected shortlink is --> $rss"
       if rss="$(validate_xml "$rss")"; then
         printf %s\\n "$rss"
         return
@@ -213,6 +215,7 @@ validate_xml() (
     *atom+xml*)
       atom="${r#*application/atom+xml\"*href=\"}"
       atom="${atom%%\"*}"
+      log 3 "validate_xml:: atom --> $atom"
       case "$atom" in /*) atom="${1}$atom" ;; esac
       if atom="$(validate_xml "$atom")"; then
         printf %s\\n "$atom"
@@ -249,18 +252,21 @@ main() {
   shift "$((OPTIND - 1))"
 
   if [ -z "${1:-}" ]; then
+    err "No arguments passed."
     usage 1
   fi
 
   # shellcheck disable=2068
   for feed in $@; do
 
+    log 3 "feed is: $feed"
     if ! feed="$(validate_xml "$feed")"; then
       err "Unable to validate $feed xml"
       retval=$((retval + 1))
       continue
     fi
 
+    log 3 "Post-validated feed is $feed"
     log 2 "Downloading $feed"
     # curl the feed
     if ! xml="$(http__curl "$feed")"; then
@@ -321,19 +327,21 @@ main() {
 
     Ntfy_Name="${Ntfy_Name:-"$(del_space "$feedName")"}"
 
-    log 1 "ntfy namespace: $Ntfy_Name"
-    log 1 "Name: $feedName"
-    log 1 "Title: $itemName"
-    log 1 "Link: $itemLink"
+    log 3 "Ntfy_Name -->: $Ntfy_Name"
+    log 3 "feedName --> $feedName"
+    log 3 "itemName --> $itemName"
+    log 3 "itemLink --> $itemLink"
 
     # Hashed Ntfy_Name
     if ! h_name="$(hash_sum "$Ntfy_Name")"; then
+      err "Unable to hash $Ntfy_Name"
       err "$h_name"
       return $((retval + 1))
     fi
     
     # Hashed Title
     if ! h_feed="$(hash_sum "$feedName")"; then
+      err "Unable to hash $feedName"
       err "$h_feed"
       return $((retval + 1))
     fi
@@ -348,7 +356,7 @@ main() {
     hash_file="$Working_Dir/$h_name/$h_feed"
     if [ -r "$hash_file" ]; then
       if [ "$h_content" -eq "$(cat "$hash_file")" ]; then
-        log "'$feedName' is at latest version. Skipping."
+        log 1 "'$feedName' is at latest version. Skipping."
         continue
       fi
     fi
@@ -365,7 +373,7 @@ main() {
       return $((retval + 1))
     fi
 
-    log "$h_content saved to $hash_file"
+    log 3 "$h_content saved to $hash_file"
 
     if ! ntfy_shortname="$(del_space "$Ntfy_Name")"; then
       err "Unable to shorten $Ntfy_Name for ntfy.sh; skipping"
@@ -375,11 +383,14 @@ main() {
     # Check if this message is in ntfy cache
     if ! j="$(http__curl \
               "$Ntfy_Server/$ntfy_shortname/json?poll=1")"; then
+      err "Unable to check cache for $Ntfy_Server/$ntfy_shortname"
       err "$j"
       retval=$((retval + 1))
       continue
     fi
 
+    log 2 "Parsing ntfy json"
+    log 3 "$j"
     in_cache=0
     # Parse the ntfy json
     while read -r json; do
@@ -393,6 +404,7 @@ main() {
       cache_url="${cache_url%%\"*}"
 
       if ! h_cache="$(hash_sum "$cache_title" "$cache_msg" "$cache_url")"; then
+        err "Unable to hash $cache_title, $cache_msg, $cache_url"
         err "$h_cache"
         return $((retval + 1))
       fi
@@ -407,34 +419,36 @@ main() {
 EOF
 
     if [ "$in_cache" -eq 1 ]; then
-      log "$feedName is already in the ntfy cache. Skipping."
+      log 1 "$feedName is already in the ntfy cache. Skipping."
       continue
     fi
 
     if [ "$Test_Mode" -ne 0 ]; then
-      log "Test mode, not sending to ntfy."
+      log 0 "Test Mode: $feedName is updated, but not sending to ntfy."
       return
     fi
 
-    log "Sending notification to $Ntfy_Server/$ntfy_shortname"
+    log 1 "Sending notification to $Ntfy_Server/$ntfy_shortname"
+    log 2 "Title: $feedName, Click: $itemLink, Actions: view, Read, $itemLink"
     if ! r="$(http__curl \
               "$Ntfy_Server/$ntfy_shortname" \
               -H "Title: $feedName" \
               -H "Click: $itemLink" \
               -H "Actions: view, Read, $itemLink" \
               -d "$itemName" )"; then
+      err "Unable to post to $Ntfy_Server/$ntfy_shortname"
       err "$r"
       retval=$((retval + 1))
       continue
     fi
 
-    log "Response from $Ntfy_Server: $r"
+    log 3 "Response from $Ntfy_Server: $r"
 
-    out "Notification sent to: $Ntfy_Server/$ntfy_shortname"
+    log 0 "'$feedName' sent to: $Ntfy_Server/$ntfy_shortname"
 
   done
+  log 3 "Retval: $retval"
   return "$retval"
 } 
 
-trap clean_up EXIT
 main "$@"
