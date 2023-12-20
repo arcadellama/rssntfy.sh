@@ -32,7 +32,6 @@ set -eu
 LC_ALL=C
 
 Prgnam="$(basename "$0")"
-Version=0.0.1
 Ntfy_Server="${Ntfy_Server:=https://ntfy.sh}"
 Ntfy_Name=""
 Working_Dir="${Working_Dir:=$HOME/.local/var/$Prgnam}"
@@ -43,9 +42,7 @@ Test_Mode=0
 # Arguments: exit status
 usage() (
   cat << EOF
-  $Prgnam -- $Version
-
-  Usage: [-tv] [OPTIONS] url://rss.feed.xml
+  Usage: $Prgnam [-tv] [OPTIONS] url://rss.feed.xml
 
   Arguments:
   -t        Testing mode (do not send to ntfy)
@@ -93,16 +90,21 @@ err() (
   printf '[%s]: ERROR %s\n' "$(date +'%Y-%m-%dT%H:%M:%S%z')" "$*" >&2
 )
 
-# Function: remove spaces from a string
+# Function: remove HTML special characters from a string
 # Argument: string
-del_space() (
+shortcodify() (
   # shellcheck disable=SC2086
+  set -f
+  old_ifs=$IFS
+  IFS="\"'&<> "
+  # shellcheck disable=2086
   set -- $1
-  while [ "$#" -gt 0 ]; do
-    printf %s "$1"
+  while [ "$#" -gt 1 ]; do
+    printf '%s-' "$1"
     shift
   done
-  printf \\n
+  printf %s\\n "$1"
+  IFS=$old_ifs
 )
 
 # Function: output the checksum of a string
@@ -156,6 +158,80 @@ http__curl() (
   cat "$response"
   rm -rf "$response"
   return $retval
+)
+
+# Function: replace UTF character encodings
+# Argument: string
+utf_char_decode() (
+  # first check and then return if not found
+  code="" char=""
+  case "$1" in
+    *\\u0036*)
+      code='\u0036'
+      char='&'
+      ;;
+    *\\u003c*)
+      code='\u003c'
+      char="<"
+      ;;
+    *\\u003e*)
+      code='\u003e'
+      char=">"
+      ;;
+    *\\u0022*)
+      code='\u0022'
+      char='"'
+      ;;
+    *\\0027*)
+      code='\u0027'
+      char="'"
+      ;;
+    *)
+      printf %s\\n "$1"
+      return
+      ;;
+  esac
+
+  a="${1%%"$code"*}"
+  b="${1##*"$code"}"
+  printf %s\\n "$a$char$b"
+)
+
+# Function: replace xml character encodings
+# Argument: string
+xml_char_decode() (
+  # first check and then return if not found
+  code="" char=""
+  case "$1" in
+    *\&amp\;*)
+      code='&amp;'
+      char='\&'
+      ;;
+    *\&lt\;*)
+      code='&lt;'
+      char="<"
+      ;;
+    *\&gt\;*)
+      code='&gt;'
+      char=">"
+      ;;
+    *\&quot\;*)
+      code='&quot;'
+      char='"'
+      ;;
+    *\&apos\;*)
+      code='&apos;'
+      char="'"
+      ;;
+    *)
+      printf %s\\n "$1"
+      return
+      ;;
+  esac
+
+  a="${1%%"$code"*}"
+  b="${1##*"$code"}"
+  printf %s\\n "$a$char$b"
 )
 
 # Function: validate if xml+rss or html; attempts to return xml feed
@@ -309,7 +385,12 @@ main() {
       continue
     fi
 
-    Ntfy_Name="${Ntfy_Name:-"$(del_space "$feedName")"}"
+    # Replace xml encodings, if found
+    feedName="$(xml_char_decode "$feedName")"
+    itemName="$(xml_char_decode "$itemName")"
+    itemLink="$(xml_char_decode "$itemLink")"
+
+    Ntfy_Name="${Ntfy_Name:-"$(shortcodify "$feedName")"}"
 
     log 3 "Ntfy_Name -->: $Ntfy_Name"
     log 3 "feedName --> $feedName"
@@ -359,7 +440,7 @@ main() {
 
     log 3 "$h_content saved to $hash_file"
 
-    if ! ntfy_shortname="$(del_space "$Ntfy_Name")"; then
+    if ! ntfy_shortname="$(shortcodify "$Ntfy_Name")"; then
       err "Unable to shorten $Ntfy_Name for ntfy.sh; skipping"
       return $((retval + 1))
     fi
@@ -379,14 +460,17 @@ main() {
     while read -r json; do
       cache_title="${json#*\"title\"\:\"}"
       cache_title="${cache_title%%\",*}"
+      cache_title="$(utf_char_decode "$cache_title")"
       log 3 "cache_title --> $cache_title"
 
       cache_msg="${json#*\"message\"\:\"}"
       cache_msg="${cache_msg%%\",*}"
+      cache_msg="$(utf_char_decode "$cache_msg")"
       log 3 "cache_msg --> $cache_msg"
 
       cache_url="${json#*\"url\"\:\"}"
       cache_url="${cache_url%%\"*}"
+      cache_url="$(utf_char_decode "$cache_url")"
       log 3 "cache_url --> $cache_url"
 
       if ! h_cache="$(hash_sum "$cache_title" "$cache_msg" "$cache_url")"; then
@@ -416,7 +500,7 @@ EOF
     fi
 
     log 1 "Sending notification to $Ntfy_Server/$ntfy_shortname"
-    log 2 "Title: $feedName, Click: $itemLink, Actions: view, Read, $itemLink"
+    log 3 "$feedName, $itemLink, $itemName, $itemLink"
     if ! r="$(http__curl \
               "$Ntfy_Server/$ntfy_shortname" \
               -H "Title: $feedName" \
