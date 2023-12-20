@@ -244,7 +244,8 @@ validate_xml() (
 
   # Check if xml feed
   case "$r" in
-    \<\?xml\ version=*)
+    \<\?xml\ version=*|\<rss\ version=*)
+      log 3 "$1 appears to be xml or rss feed"
       printf %s\\n "$1"
       return
       ;;
@@ -255,29 +256,39 @@ validate_xml() (
 
   case "$r" in
     *rss+xml*)
-      rss="${r#*application/rss+xml\"*href=\"}"
-      rss="${rss%%\"*}"
-      log 3 "validate_xml:: rss --> $rss"
-      case "$rss" in /*) rss="${1}$rss" ;; esac
-      log 3 "corrected shortlink is --> $rss"
-      if rss="$(validate_xml "$rss")"; then
-        printf %s\\n "$rss"
-        return
-      fi
+      xml="${r#*application/rss+xml\"*href=\"}"
+      xml="${xml%%\"*}"
       ;;
     *atom+xml*)
-      atom="${r#*application/atom+xml\"*href=\"}"
-      atom="${atom%%\"*}"
-      log 3 "validate_xml:: atom --> $atom"
-      case "$atom" in /*) atom="${1}$atom" ;; esac
-      if atom="$(validate_xml "$atom")"; then
-        printf %s\\n "$atom"
-        return
-      fi
+      xml="${r#*application/atom+xml\"*href=\"}"
+      xml="${xml%%\"*}"
+      ;;
+    *)
+      err "No xml+rss or xml+atom feeds found at $1"
+      printf %s\\n "$1"
+      return 1
       ;;
   esac
   
+  # fix shortlinks
+  case "$xml" in 
+    http*)
+      log "xml link is --> $xml"
+      ;;
+    *)
+      xml="${1}$xml"
+      log 3 "corrected shortlink is --> $xml"
+      ;; 
+  esac
+
+  log 1 "validating $xml"
+  if xml="$(validate_xml "$xml")"; then
+    printf %s\\n "$xml"
+    return
+  fi
+  
   # Not validated, sending back original with error
+  err "Unable to validate $xml as an xml file"
   printf %s\\n "$1"
   return 1
 )
