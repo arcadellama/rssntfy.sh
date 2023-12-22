@@ -38,14 +38,16 @@ Working_Dir="${Working_Dir:=$HOME/.local/var/$Prgnam}"
 
 Verbose=0
 Debug_Mode=0
+
 # Function: Output usage
 # Arguments: exit status
 usage() (
   cat << EOF
-  Usage: $Prgnam [-tv] [OPTIONS] url://rss.feed.xml
+  Usage: $Prgnam [-Dhv] [OPTIONS] url://rss.feed.xml
 
   Arguments:
   -D        Debug mode (do not send to ntfy)
+  -h        This screen
   -v        Verbose logging
 
   Options:
@@ -56,11 +58,12 @@ usage() (
   To monitor 3 RSS feeds under one ntfy.sh topic (e.g., RssNewsTechTag),
   set the following as as a cron job:
 
-  $Prgnam -n RssNewsTechTag https://news.ycombinator.com/rss https://feeds.arstechnica.com/arstechnica/index https://www.theverge.com/rss/index.xml
+  $Prgnam -n RssNewsTechTag \\
+             https://feeds.arstechnica.com/arstechnica/index \\
+             theverge.com
   
 
 EOF
-exit "${1:-0}"
 )
 
 # Function: check if string is an integer
@@ -301,13 +304,14 @@ is_atom_feed() (
 main() {
   retval=0
   # Get opts
-  while getopts 'vDt:s:' opts; do
+  while getopts 'vDht:s:' opts; do
     case "$opts" in
       D) Debug_Mode=1 ;;
       v) Verbose=$((Verbose + 1)) ;;
+      h) usage ; exit ;;
       t) Ntfy_Topic="$OPTARG" ;;
       s) Ntfy_Server="$OPTARG" ;;
-      *) usage 1 ;;
+      *) usage ; exit 1 ;;
     esac
   done
   shift "$((OPTIND - 1))"
@@ -320,7 +324,8 @@ main() {
 
   if [ -z "${1:-}" ]; then
     err "No arguments passed."
-    usage 1
+    usage
+    exit 1
   fi
 
   # shellcheck disable=2068
