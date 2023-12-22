@@ -98,7 +98,7 @@ shortcodify() (
   # shellcheck disable=SC2086
   set -f
   old_ifs=$IFS
-  IFS="\"'&<> "
+  IFS="\"'&<>,./ "
   # shellcheck disable=2086
   set -- $1
   while [ "$#" -gt 1 ]; do
@@ -207,7 +207,7 @@ xml_char_decode() (
   case "$1" in
     *\&amp\;*)
       code='&amp;'
-      char='\&'
+      char='&'
       ;;
     *\&lt\;*)
       code='&lt;'
@@ -234,6 +234,24 @@ xml_char_decode() (
   a="${1%%"$code"*}"
   b="${1##*"$code"}"
   printf %s\\n "$a$char$b"
+)
+
+# Function: clean-up XML data
+# Arguments: XML string
+cleanup_xml() (
+  # xml_char_decode
+  xml="$(xml_char_decode "$1")"
+  # Remove <![CDATA][*]]>
+  case "$xml" in
+    *CDATA*)
+      xml="${xml##*\<\!\[CDATA\[}"
+      xml="${xml%%\]\]\>*}"
+      echo "$xml"
+      exit
+      ;;
+  esac
+  # return cleaned-up string
+  printf %s\\n "$xml"
 )
 
 # Function: validate if xml+rss or html; attempts to return xml feed
@@ -275,10 +293,14 @@ validate_xml() (
   # fix shortlinks
   case "$xml" in 
     http*)
-      log "xml link is --> $xml"
+      log 3 "xml link is --> $xml"
+      ;;
+    /*)
+      xml="${1}$xml"
+      log 3 "corrected shortlink is --> $xml"
       ;;
     *)
-      xml="${1}$xml"
+      xml="${1}/$xml"
       log 3 "corrected shortlink is --> $xml"
       ;; 
   esac
@@ -398,10 +420,10 @@ main() {
       continue
     fi
 
-    # Replace xml encodings, if found
-    feedName="$(xml_char_decode "$feedName")"
-    itemName="$(xml_char_decode "$itemName")"
-    itemLink="$(xml_char_decode "$itemLink")"
+    # Cleanup xml encodings, if found
+    feedName="$(cleanup_xml "$feedName")"
+    itemName="$(cleanup_xml "$itemName")"
+    itemLink="$(cleanup_xml "$itemLink")"
 
     Ntfy_Topic="${Ntfy_Topic:-"$(shortcodify "$feedName")"}"
 
