@@ -33,11 +33,11 @@ LC_ALL=C
 
 Prgnam="$(basename "$0")"
 Ntfy_Server="${Ntfy_Server:=https://ntfy.sh}"
-Ntfy_Name=""
+Ntfy_Topic=""
 Working_Dir="${Working_Dir:=$HOME/.local/var/$Prgnam}"
 
 Verbose=0
-Test_Mode=0
+Debug_Mode=0
 # Function: Output usage
 # Arguments: exit status
 usage() (
@@ -45,16 +45,15 @@ usage() (
   Usage: $Prgnam [-tv] [OPTIONS] url://rss.feed.xml
 
   Arguments:
-  -t        Testing mode (do not send to ntfy)
+  -D        Debug mode (do not send to ntfy)
   -v        Verbose logging
 
   Options:
-  -d        Working directory (Default: \$HOME/.local/var/$Prgnam)
-  -n        Namespace for ntfy.sh (Optional)
+  -t        Topic for ntfy.sh (Optional)
   -s        ntfy.sh server url (Default: https://ntfy.sh)
 
   Example:
-  To monitor 3 RSS feeds under one ntfy.sh namespace (e.g., RssNewsTechTag),
+  To monitor 3 RSS feeds under one ntfy.sh topic (e.g., RssNewsTechTag),
   set the following as as a cron job:
 
   $Prgnam -n RssNewsTechTag https://news.ycombinator.com/rss https://feeds.arstechnica.com/arstechnica/index https://www.theverge.com/rss/index.xml
@@ -302,22 +301,21 @@ is_atom_feed() (
 main() {
   retval=0
   # Get opts
-  while getopts 'vtd:n:s:' opts; do
+  while getopts 'vDt:s:' opts; do
     case "$opts" in
-      t) Test_Mode=1 ;;
+      D) Debug_Mode=1 ;;
       v) Verbose=$((Verbose + 1)) ;;
-      d) Working_Dir="$OPTARG" ;;
-      n) Ntfy_Name="$OPTARG" ;;
+      t) Ntfy_Topic="$OPTARG" ;;
       s) Ntfy_Server="$OPTARG" ;;
       *) usage 1 ;;
     esac
   done
   shift "$((OPTIND - 1))"
 
-  log 3 "Test_Mode --> $Test_Mode"
+  log 3 "Debug_Mode --> $Debug_Mode"
   log 3 "Verbose --> $Verbose"
   log 3 "Working_Dir --> $Working_Dir"
-  log 3 "Ntfy_Name --> $Ntfy_Name"
+  log 3 "Ntfy_Topic --> $Ntfy_Topic"
   log 3 "Ntfy_Server --> $Ntfy_Server"
 
   if [ -z "${1:-}" ]; then
@@ -400,16 +398,16 @@ main() {
     itemName="$(xml_char_decode "$itemName")"
     itemLink="$(xml_char_decode "$itemLink")"
 
-    Ntfy_Name="${Ntfy_Name:-"$(shortcodify "$feedName")"}"
+    Ntfy_Topic="${Ntfy_Topic:-"$(shortcodify "$feedName")"}"
 
-    log 3 "Ntfy_Name -->: $Ntfy_Name"
+    log 3 "Ntfy_Topic -->: $Ntfy_Topic"
     log 3 "feedName --> $feedName"
     log 3 "itemName --> $itemName"
     log 3 "itemLink --> $itemLink"
 
-    # Hashed Ntfy_Name
-    if ! h_name="$(hash_sum "$Ntfy_Name")"; then
-      err "Unable to hash $Ntfy_Name"
+    # Hashed Ntfy_Topic
+    if ! h_name="$(hash_sum "$Ntfy_Topic")"; then
+      err "Unable to hash $Ntfy_Topic"
       err "$h_name"
       return $((retval + 1))
     fi
@@ -450,15 +448,15 @@ main() {
 
     log 3 "$h_content saved to $hash_file"
 
-    if ! ntfy_shortname="$(shortcodify "$Ntfy_Name")"; then
-      err "Unable to shorten $Ntfy_Name for ntfy.sh; skipping"
+    if ! ntfy_shorttopic="$(shortcodify "$Ntfy_Topic")"; then
+      err "Unable to shorten $Ntfy_Topic for ntfy.sh; skipping"
       return $((retval + 1))
     fi
 
     # Check if this message is in ntfy cache
     if ! j="$(http__curl \
-              "$Ntfy_Server/$ntfy_shortname/json?poll=1")"; then
-      err "Unable to check cache for $Ntfy_Server/$ntfy_shortname"
+              "$Ntfy_Server/$ntfy_shorttopic/json?poll=1")"; then
+      err "Unable to check cache for $Ntfy_Server/$ntfy_shorttopic"
       err "$j"
       retval=$((retval + 1))
       continue
@@ -503,21 +501,21 @@ EOF
       continue
     fi
 
-    if [ "$Test_Mode" -ne 0 ]; then
-      log 0 "Test Mode: $feedName is updated, but not sending to ntfy."
+    if [ "$Debug_Mode" -ne 0 ]; then
+      log 0 "Debug Mode: $feedName is updated, but not sending to ntfy."
       log 3 "retval --> $retval"
       return "$retval"
     fi
 
-    log 1 "Sending notification to $Ntfy_Server/$ntfy_shortname"
+    log 1 "Sending notification to $Ntfy_Server/$ntfy_shorttopic"
     log 3 "$feedName, $itemLink, $itemName, $itemLink"
     if ! r="$(http__curl \
-              "$Ntfy_Server/$ntfy_shortname" \
+              "$Ntfy_Server/$ntfy_shorttopic" \
               -H "Title: $feedName" \
               -H "Click: $itemLink" \
               -H "Actions: view, Read, $itemLink" \
               -d "$itemName" )"; then
-      err "Unable to post to $Ntfy_Server/$ntfy_shortname"
+      err "Unable to post to $Ntfy_Server/$ntfy_shorttopic"
       err "$r"
       retval=$((retval + 1))
       continue
@@ -525,7 +523,7 @@ EOF
 
     log 3 "Response from $Ntfy_Server: $r"
 
-    log 0 "'$feedName' sent to: $Ntfy_Server/$ntfy_shortname"
+    log 0 "'$feedName' sent to: $Ntfy_Server/$ntfy_shorttopic"
 
   done
   log 3 "Retval: $retval"
