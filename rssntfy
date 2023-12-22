@@ -58,10 +58,10 @@ usage() (
   To monitor 3 RSS feeds under one ntfy.sh topic (e.g., RssNewsTechTag),
   set the following as as a cron job:
 
-  $Prgnam -n RssNewsTechTag \\
+  $Prgnam -t RssNewsTechTag \\
              https://feeds.arstechnica.com/arstechnica/index \\
-             theverge.com
-  
+             theverge.com \\
+             pcmag.com
 
 EOF
 )
@@ -530,8 +530,7 @@ EOF
 
     if [ "$Debug_Mode" -ne 0 ]; then
       log 0 "Debug Mode: $feedName is updated, but not sending to ntfy."
-      log 3 "retval --> $retval"
-      return "$retval"
+      continue 
     fi
 
     log 1 "Sending notification to $Ntfy_Server/$ntfy_shorttopic"
