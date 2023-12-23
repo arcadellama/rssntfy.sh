@@ -38,17 +38,19 @@ Ntfy_Priority="${Ntfy_Priority:=3}"
 Working_Dir="${Working_Dir:=$HOME/.local/var/$Prgnam}"
 
 Verbose=0
+Quiet_Mode=0
 Debug_Mode=0
 
 # Function: Output usage
 # Arguments: exit status
 usage() (
   cat << EOF
-  Usage: $Prgnam [-Dhv] [OPTIONS] url://rss.feed.xml
+  Usage: $Prgnam [-Dhqv] [OPTIONS] url://rss.feed.xml
 
   Arguments:
   -D        Debug mode (do not send to ntfy)
-  -h        This screen
+  -h        This screen.
+  -q        Quiet output, errors only.
   -v        Verbose logging
 
   Options:
@@ -86,6 +88,7 @@ log() (
   if [ "$Verbose" -ge "$priority" ]; then
     printf '[%s]: %s\n' "$(date +'%Y-%m-%dT%H:%M:%S%z')" "$*" >&2
   fi
+
 )
 
 # Function: output error data to stderr
@@ -330,9 +333,10 @@ is_atom_feed() (
 main() {
   retval=0
   # Get opts
-  while getopts 'vDht:p:s:' opts; do
+  while getopts 'qvDht:p:s:' opts; do
     case "$opts" in
       D) Debug_Mode=1 ;;
+      q) Quiet_Mode=1 ;;
       v) Verbose=$((Verbose + 1)) ;;
       h) usage ; exit ;;
       t) Ntfy_Topic="$OPTARG" ;;
@@ -343,7 +347,12 @@ main() {
   done
   shift "$((OPTIND - 1))"
 
+  if [ "$Quiet_Mode" -eq 1 ]; then
+    Verbose=-1
+  fi
+
   log 3 "Debug_Mode --> $Debug_Mode"
+  log 3 "Quiet_Mode --> $Quiet_Mode"
   log 3 "Verbose --> $Verbose"
   log 3 "Working_Dir --> $Working_Dir"
   log 3 "Ntfy_Topic --> $Ntfy_Topic"
