@@ -45,22 +45,22 @@ Debug_Mode=0
 # Arguments: exit status
 usage() (
   cat << EOF
-  Usage: $Prgnam [-Dhqv] [OPTIONS] url://rss.feed.xml
+Usage: $Prgnam [-Dhqv] -p <1..5> -s <server> -t <topic>  url
 
-  Arguments:
-  -D        Debug mode (do not send to ntfy)
-  -h        This screen.
-  -q        Quiet output, errors only.
-  -v        Verbose logging
+Flags:
+  -D            Debug mode (do not send to ntfy)
+  -h            This screen.
+  -q            Quiet output, errors only.
+  -v            Increase verbosity
 
-  Options:
-  -t        Topic for ntfy.sh (Optional)
-  -p        Priority [1-5] (Default: 3)
-  -s        ntfy.sh server url (Default: https://ntfy.sh)
+Options:
+  -p <1..5>     Priority [1-5] (Default: 3)
+  -s <server>   ntfy.sh server url (Default: https://ntfy.sh)
+  -t <topic>    Topic for ntfy.sh (Optional)
 
-  Example:
-  To monitor 3 RSS feeds under one ntfy.sh topic (e.g., RssNewsTechTag),
-  set the following as as a cron job:
+Example:
+To monitor 3 RSS feeds under one ntfy.sh topic (e.g., RssNewsTechTag),
+set the following as as a cron job:
 
   $Prgnam -t RssNewsTechTag \\
              https://feeds.arstechnica.com/arstechnica/index \\
@@ -88,7 +88,6 @@ log() (
   if [ "$Verbose" -ge "$priority" ]; then
     printf '[%s]: %s\n' "$(date +'%Y-%m-%dT%H:%M:%S%z')" "$*" >&2
   fi
-
 )
 
 # Function: output error data to stderr
