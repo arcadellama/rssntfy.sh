@@ -34,6 +34,7 @@ LC_ALL=C
 Prgnam="$(basename "$0")"
 Ntfy_Server="${Ntfy_Server:=https://ntfy.sh}"
 Ntfy_Topic=""
+Ntfy_Priority="${Ntfy_Priority:=3}"
 Working_Dir="${Working_Dir:=$HOME/.local/var/$Prgnam}"
 
 Verbose=0
@@ -52,6 +53,7 @@ usage() (
 
   Options:
   -t        Topic for ntfy.sh (Optional)
+  -p        Priority [1-5] (Default: 3)
   -s        ntfy.sh server url (Default: https://ntfy.sh)
 
   Example:
@@ -326,12 +328,13 @@ is_atom_feed() (
 main() {
   retval=0
   # Get opts
-  while getopts 'vDht:s:' opts; do
+  while getopts 'vDht:p:s:' opts; do
     case "$opts" in
       D) Debug_Mode=1 ;;
       v) Verbose=$((Verbose + 1)) ;;
       h) usage ; exit ;;
       t) Ntfy_Topic="$OPTARG" ;;
+      p) Ntfy_Priority="$OPTARG" ;;
       s) Ntfy_Server="$OPTARG" ;;
       *) usage ; exit 1 ;;
     esac
@@ -342,6 +345,7 @@ main() {
   log 3 "Verbose --> $Verbose"
   log 3 "Working_Dir --> $Working_Dir"
   log 3 "Ntfy_Topic --> $Ntfy_Topic"
+  log 3 "Ntfy_Priority --> $Ntfy_Priority"
   log 3 "Ntfy_Server --> $Ntfy_Server"
 
   if [ -z "${1:-}" ]; then
@@ -540,6 +544,7 @@ EOF
               -H "Title: $feedName" \
               -H "Click: $itemLink" \
               -H "Actions: view, Read, $itemLink" \
+              -H "Priority: $Ntfy_Priority" \
               -d "$itemName" )"; then
       err "Unable to post to $Ntfy_Server/$ntfy_shorttopic"
       err "$r"
