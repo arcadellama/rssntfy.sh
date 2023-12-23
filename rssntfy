@@ -100,7 +100,7 @@ shortcodify() (
   # shellcheck disable=SC2086
   set -f
   old_ifs=$IFS
-  IFS="\"'&<>,./ "
+  IFS="\"'&<>,.()/ "
   # shellcheck disable=2086
   set -- $1
   while [ "$#" -gt 1 ]; do
@@ -264,9 +264,11 @@ validate_xml() (
     return 1
   fi
 
+  log 4 "$r"
+
   # Check if xml feed
   case "$r" in
-    \<\?xml\ version=*|\<rss\ version=*)
+    \<\?xml\ version*|\<rss\ version*)
       log 3 "$1 appears to be xml or rss feed"
       printf %s\\n "$1"
       return
