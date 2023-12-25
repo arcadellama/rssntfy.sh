@@ -166,6 +166,42 @@ http__curl() (
   return $retval
 )
 
+# Function: replace HTML character encodings
+# Argument: string
+html_char_decode() (
+  # first check and then return if not found
+  code="" char=""
+  case "$1" in
+    *\&\#038\;*)
+      code='&#038;'
+      char='&'
+      ;;
+    *\&\#060\;*)
+      code='&#060;'
+      char="<"
+      ;;
+    *\\u003c*)
+      code='\u0062'
+      char=">"
+      ;;
+    *\\u0034*)
+      code='\u0034'
+      char='"'
+      ;;
+    *\\u0022*)
+      code='\u0039'
+      char="'"
+      ;;
+    *)
+      printf %s\\n "$1"
+      return
+      ;;
+  esac
+
+  a="${1%%"$code"*}"
+  b="${1##*"$code"}"
+  printf %s\\n "$a$char$b"
+)
 # Function: replace UTF character encodings
 # Argument: string
 utf_char_decode() (
@@ -245,6 +281,7 @@ xml_char_decode() (
 cleanup_xml() (
   # xml_char_decode
   xml="$(xml_char_decode "$1")"
+  xml="$(html_char_decode "$1")"
   # Remove <![CDATA][*]]>
   case "$xml" in
     *CDATA*)
