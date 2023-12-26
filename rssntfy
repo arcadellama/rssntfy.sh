@@ -168,40 +168,683 @@ http__curl() (
 
 # Function: replace HTML character encodings
 # Argument: string
+# Function: replace HTML character encodings
+# Argument: string
 html_char_decode() (
-  # first check and then return if not found
-  code="" char=""
-  case "$1" in
-    *\&\#038\;*)
-      code='&#038;'
-      char='&'
-      ;;
-    *\&\#060\;*)
-      code='&#060;'
-      char="<"
-      ;;
-    *\\u003c*)
-      code='\u0062'
-      char=">"
-      ;;
-    *\\u0034*)
-      code='\u0034'
-      char='"'
-      ;;
-    *\\u0022*)
-      code='\u0039'
-      char="'"
-      ;;
-    *)
-      printf %s\\n "$1"
-      return
-      ;;
-  esac
+  str="$1"
+  while true; do
+    char="" name="" number=""
+    case "$str" in
 
-  a="${1%%"$code"*}"
-  b="${1##*"$code"}"
-  printf %s\\n "$a$char$b"
+			# Description
+			*Entity\ Name*)
+				char='Character'
+				name='Entity Name'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*Entity\ Number*)
+				char='Character'
+				number='Entity Number'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Ampersand
+			*\&amp\;*)
+				char='&'
+				name='&amp;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#38\;*)
+				char='&'
+				number='&#38;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Double quote mark
+			*\&quot\;*)
+				char='""""'
+				name='&quot;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#34\;*)
+				char='""""'
+				number='&#34;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Less than symbol
+			*\&lt\;*)
+				char='<'
+				name='&lt;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#60\;*)
+				char='<'
+				number='&#60;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Greater than symbol
+			*\&gt\;*)
+				char='>'
+				name='&gt;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#62\;*)
+				char='>'
+				number='&#62;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Apostrophe (XHTML only)
+			*\&apos\;*)
+				char="'"
+				name='&apos;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#39\;*)
+				char="'"
+				number='&#39;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# En space
+			*\&ensp\;*)
+				char=' '
+				name='&ensp;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8194\;*)
+				char=' '
+				number='&#8194;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Em space
+			*\&emsp\;*)
+				char=' '
+				name='&emsp;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8195\;*)
+				char=' '
+				number='&#8195;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Thin space
+			*\&thinsp\;*)
+				char=' '
+				name='&thinsp;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8201\;*)
+				char=' '
+				number='&#8201;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Nonbreaking space
+			*\&nbsp\;*)
+				char=' '
+				name='&nbsp;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#160\;*)
+				char=' '
+				number='&#160;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# En dash
+			*\&ndash\;*)
+				char='–'
+				name='&ndash;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8211\;*)
+				char='–'
+				number='&#8211;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Em dash
+			*\&mdash\;*)
+				char='—'
+				name='&mdash;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8212\;*)
+				char='—'
+				number='&#8212;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Left/Opening single-quote
+			*\&lsquo\;*)
+				char="‘"
+				name='&lsquo;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8216\;*)
+				char="‘"
+				number='&#8216;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Right/Closing single-quote and apostrophe
+			*\&rsquo\;*)
+				char="’"
+				name='&rsquo;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8217\;*)
+				char="’"
+				number='&#8217;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Single low-9 quotation mark
+			*\&sbquo\;*)
+				char='‚'
+				name='&sbquo;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8218\;*)
+				char='‚'
+				number='&#8218;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Left/Opening double-quote
+			*\&ldquo\;*)
+				char='“'
+				name='&ldquo;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8220\;*)
+				char='“'
+				number='&#8220;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Right/Closing double-quote
+			*\&rdquo\;*)
+				char='”'
+				name='&rdquo;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8221\;*)
+				char='”'
+				number='&#8221;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Double low-9 quotation mark
+			*\&bdquo\;*)
+				char='„'
+				name='&bdquo;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8222\;*)
+				char='„'
+				number='&#8222;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Left-pointing single angle quotation mark
+			*\&lsaquo\;*)
+				char='‹'
+				name='&lsaquo;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8249\;*)
+				char='‹'
+				number='&#8249;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Left-pointing single angle quotation mark
+			*\&rsaquo\;*)
+				char='›'
+				name='&rsaquo;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8250\;*)
+				char='›'
+				number='&#8250;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Left-pointing double angle quotation mark
+			*\&laquo\;*)
+				char='«'
+				name='&laquo;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#171\;*)
+				char='«'
+				number='&#171;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Right-pointing double angle quotation mark
+			*\&raquo\;*)
+				char='»'
+				name='&raquo;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#187\;*)
+				char='»'
+				number='&#187;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Dagger
+			*\&dagger\;*)
+				char='†'
+				name='&dagger;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8224\;*)
+				char='†'
+				number='&#8224;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Bullet
+			*\&bull\;*)
+				char='•'
+				name='&bull;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8226\;*)
+				char='•'
+				number='&#8226;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Ellipses
+			*\&hellep\;*)
+				char='…'
+				name='&hellep;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8230\;*)
+				char='…'
+				number='&#8230;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Per mille symbol (per thousand)
+			*\&permil\;*)
+				char='‰'
+				name='&permil;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8240\;*)
+				char='‰'
+				number='&#8240;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Prime, minutes, feet
+			*\&prime\;*)
+				char='′'
+				name='&prime;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8242\;*)
+				char='′'
+				number='&#8242;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Double prime, seconds, inches
+			*\&Prime\;*)
+				char='″'
+				name='&Prime;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8243\;*)
+				char='″'
+				number='&#8243;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Overline
+			*\&oline\;*)
+				char='‾'
+				name='&oline;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8254\;*)
+				char='‾'
+				number='&#8254;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Fraction slash
+			*\&frasl\;*)
+				char='⁄'
+				name='&frasl;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8260\;*)
+				char='⁄'
+				number='&#8260;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Copyright
+			*\&copy\;*)
+				char='©'
+				name='&copy;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#169\;*)
+				char='©'
+				number='&#169;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Registered
+			*\&reg\;*)
+				char='®'
+				name='&reg;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#174\;*)
+				char='®'
+				number='&#174;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Trademark
+			*\&trade\;*)
+				char='™'
+				name='&trade;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8482\;*)
+				char='™'
+				number='&#8482;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Left arrow
+			*\&larr\;*)
+				char='←'
+				name='&larr;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8592\;*)
+				char='←'
+				number='&#8592;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Up arrow
+			*\&uarr\;*)
+				char='↑'
+				name='&uarr;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8593\;*)
+				char='↑'
+				number='&#8593;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Right arrow
+			*\&rarr\;*)
+				char='→'
+				name='&rarr;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8594\;*)
+				char='→'
+				number='&#8594;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Down arrow
+			*\&darr\;*)
+				char='↓'
+				name='&darr;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8595\;*)
+				char='↓'
+				number='&#8595;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Left-right arrow
+			*\&harr\;*)
+				char='↔'
+				name='&harr;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8596\;*)
+				char='↔'
+				number='&#8596;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Down arrow with corner leftward
+			*\&crarr\;*)
+				char='↵'
+				name='&crarr;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8629\;*)
+				char='↵'
+				number='&#8629;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Leftward double arrow
+			*\&lArr\;*)
+				char='⇐'
+				name='&lArr;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8656\;*)
+				char='⇐'
+				number='&#8656;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Upward double arrow
+			*\&uArr\;*)
+				char='⇑'
+				name='&uArr;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8657\;*)
+				char='⇑'
+				number='&#8657;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Rightward double arrow
+			*\&rArr\;*)
+				char='⇒'
+				name='&rArr;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8658\;*)
+				char='⇒'
+				number='&#8658;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Downward double arrow
+			*\&dArr\;*)
+				char='⇓'
+				name='&dArr;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8659\;*)
+				char='⇓'
+				number='&#8659;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			# Left-right double arrow
+			*\&hArr\;*)
+				char='⇔'
+				name='&hArr;'
+				str="${str%"$name"*}${char}${str##*"$name"}"
+				continue
+				;;
+
+			*\&#8660\;*)
+				char='⇔'
+				number='&#8660;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+      
+      *)
+        printf %s\\n "$str"
+        return
+        ;;
+    esac
+  done
 )
+
 # Function: replace UTF character encodings
 # Argument: string
 utf_char_decode() (
