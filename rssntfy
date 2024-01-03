@@ -54,9 +54,9 @@ Flags:
   -v            Increase verbosity
 
 Options:
-  -p <1..5>     Priority [1-5] (Default: 3)
-  -s <server>   ntfy.sh server url (Default: https://ntfy.sh)
-  -t <topic>    Topic for ntfy.sh (Optional)
+  -p | --priority <1..5>    Priority [1-5] (Default: 3)
+  -s | --server <server>    ntfy.sh server url (Default: https://ntfy.sh)
+  -t | --topic <topic>      Topic for ntfy.sh (Optional)
 
 Example:
 To monitor 3 RSS feeds under one ntfy.sh topic (e.g., RssNewsTechTag),
@@ -993,22 +993,30 @@ is_atom_feed() (
   esac
 )
 
-main() {
-  retval=0
+main_getflagopts() {
   # Get opts
-  while getopts 'qvDht:p:s:' opts; do
+  while getopts 'qvDh' opts; do
     case "$opts" in
       D) Debug_Mode=1 ;;
       q) Quiet_Mode=1 ;;
       v) Verbose=$((Verbose + 1)) ;;
       h) usage ; exit ;;
-      t) Ntfy_Topic="$OPTARG" ;;
-      p) Ntfy_Priority="$OPTARG" ;;
-      s) Ntfy_Server="$OPTARG" ;;
-      *) usage ; exit 1 ;;
+      *) return ;;
     esac
   done
-  shift "$((OPTIND - 1))"
+}
+
+main() {
+  retval=0
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      -t|--topic) Ntfy_Topic="$2" ; shift 2 ;;
+      -p|--priority) Ntfy_Priority="$2" ; shift 2 ;;
+      -s|--server) Ntfy_Server="$2" ; shift 2 ;;
+      -*) main_getflagopts "$1" ; shift 1 ;;
+      *) break ;;
+    esac
+  done
 
   if [ "$Quiet_Mode" -eq 1 ]; then
     Verbose=-1
