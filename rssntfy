@@ -175,22 +175,6 @@ html_char_decode() (
   while true; do
     char="" name="" number=""
     case "$str" in
-
-			# Description
-			*Entity\ Name*)
-				char='Character'
-				name='Entity Name'
-				str="${str%"$name"*}${char}${str##*"$name"}"
-				continue
-				;;
-
-			*Entity\ Number*)
-				char='Character'
-				number='Entity Number'
-				str="${str%"$number"*}${char}${str##*"$number"}"
-				continue
-				;;
-
 			# Ampersand
 			*\&amp\;*)
 				char='&'
