@@ -190,6 +190,13 @@ html_char_decode() (
 				continue
 				;;
 
+			*\&#038\;*)
+				char='&'
+				number='&#038;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
 			# Double quote mark
 			*\&quot\;*)
 				char='""""'
@@ -205,6 +212,13 @@ html_char_decode() (
 				continue
 				;;
 
+			*\&#034\;*)
+				char='""""'
+				number='&#034;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+ 
 			# Less than symbol
 			*\&lt\;*)
 				char='<'
@@ -220,6 +234,12 @@ html_char_decode() (
 				continue
 				;;
 
+			*\&#060\;*)
+				char='<'
+				number='&#060;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
 			# Greater than symbol
 			*\&gt\;*)
 				char='>'
@@ -235,6 +255,13 @@ html_char_decode() (
 				continue
 				;;
 
+			*\&#062\;*)
+				char='>'
+				number='&#062;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
 			# Apostrophe (XHTML only)
 			*\&apos\;*)
 				char="'"
@@ -246,6 +273,13 @@ html_char_decode() (
 			*\&#39\;*)
 				char="'"
 				number='&#39;'
+				str="${str%"$number"*}${char}${str##*"$number"}"
+				continue
+				;;
+
+			*\&#039\;*)
+				char="'"
+				number='&#039;'
 				str="${str%"$number"*}${char}${str##*"$number"}"
 				continue
 				;;
@@ -308,7 +342,7 @@ html_char_decode() (
 				number='&#160;'
 				str="${str%"$number"*}${char}${str##*"$number"}"
 				continue
-				;;
+        ;;
 
 			# En dash
 			*\&ndash\;*)
